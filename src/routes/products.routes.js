@@ -1,15 +1,18 @@
 const productsRouter = require("express").Router();
-const {getAllProducts, addProduct } = require("../controllers/products.controller")
+const {getAllProducts, addProduct, getProductById, updateProduct } = require("../controllers/products.controller")
 const validate = require("../middlewares/validation.middleware");
-const  {createProductSchema }= require("../validations/products.schema")
+const  {createProductSchema, getProductsQuerySchema, objectIdSchema }= require("../validations/products.schema")
 
 
 
 
 
 
-productsRouter.get("/", getAllProducts );
+productsRouter.get("/", validate(getProductsQuerySchema, "query"),getAllProducts );
 productsRouter.post("/", validate(createProductSchema), addProduct );
+productsRouter.get("/:id", validate(objectIdSchema, "params"), getProductById );
+productsRouter.put("/:id", validate(objectIdSchema, "params"), updateProduct );
+
 
 
 
