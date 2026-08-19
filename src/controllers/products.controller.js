@@ -4,11 +4,47 @@ const mongoose = require("mongoose");
 
 
 
+
+// controllers/products.controller.js
 const getAllProducts = async (req, res, next) => {
   try {
-    const allProducts = await Product.find({});
+    const { page, limit, sort, search, category } = req.query;
 
-    return res.status(200).json({ products: allProducts });
+  
+    const queryObject = {};
+
+  
+    if (category) {
+      queryObject.category = category;
+    }
+
+    
+    if (search) {
+      queryObject.name = { $regex: search , $options : "i"};
+    }
+
+    const pageNum = parseInt(page) || 1;
+    const limitNum = parseInt(limit) || 8;
+    const skip = (pageNum - 1) * limitNum;
+
+    const sortBy = sort || "-createdAt";
+
+    const products = await Product.find(queryObject)
+      .sort(sortBy)
+      .skip(skip)
+      .limit(limitNum);
+
+   
+    const totalProducts = await Product.countDocuments(queryObject);
+
+    return res.status(200).json({
+      success: true,
+      count: products.length,       
+      totalProducts,                
+      totalPages: Math.ceil(totalProducts / limitNum), 
+      currentPage: pageNum,
+      data: products,
+    });
   } catch (err) {
     next(err);
   }
