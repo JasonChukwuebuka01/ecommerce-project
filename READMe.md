@@ -767,9 +767,7 @@ Ideas considered in scope for a future iteration, intentionally left out of this
 | _Add name_ | Database / Schema design | `@handle` |
 | _Add name_ | DevOps / Deployment | `@handle` |
 | _Add name_ | Testing / QA | `@handle` |
+ _Add name_ | Documentation | `@handle` |
 
 ---
 
-## License
-
-This project is released under the MIT License. See `LICENSE` for details.
