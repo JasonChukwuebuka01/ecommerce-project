@@ -84,8 +84,37 @@ const updateProduct = async (req, res, next) => {
   }
 };
 
+const deleteProduct = async (req, res, next) =>{
+    
+    try {
+      // prevent castError when invalid ID is passed
+        if(!mongoose.Types.ObjectId.isValid(req.params.id)){
+            return res.status(400).json({
+                message: `Invalid product ID`
+            });
+        }
+
+        const productDeleted = await Product.findByIdAndDelete(req.params.id)
+
+        if(!productDeleted){
+            return res.status(401).json({
+                mesasge: `product with ID ${req.params.id} is not available`
+            });
+        }
+
+        res.status(200).json({
+            message: `Product have been removed from the list`
+        })
+
+        
+    } catch (error) {
+        next(error)
+        
+    }
+}
 
 
 
 
-module.exports = { getAllProducts, addProduct, getProductById, updateProduct};
+
+module.exports = { getAllProducts, addProduct, getProductById, updateProduct, deleteProduct};
