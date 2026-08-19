@@ -16,12 +16,6 @@ const {
     objectIdSchema 
 } = require("../validations/products.schema");
 
-const requireAuth = require("../middlewares/requireAuth.middleware");
-
-
-
-
-
 
 productsRouter.get("/", validate(getProductsQuerySchema, "query"), getAllProducts);
 
@@ -31,7 +25,7 @@ productsRouter.get("/:id", validate(objectIdSchema, "params"), getProductById);
 
 productsRouter.put("/:id", validate(objectIdSchema, "params"), updateProduct);
 
-productsRouter.delete("/:id", requireAuth, deleteProduct);
+productsRouter.delete("/:id", validate(objectIdSchema), deleteProduct);
 
 
 

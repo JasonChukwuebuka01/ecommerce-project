@@ -91,8 +91,8 @@ const deleteProduct = async (req, res, next) =>{
         const productDeleted = await Product.findByIdAndDelete(req.params.id)
 
         if(!productDeleted){
-            return res.status(401).json({
-                mesasge: `product with ID ${req.params.id} is not available`
+            return res.status(404).json({
+                message: `Product with ID ${req.params.id} is not available`
             });
         }
 
