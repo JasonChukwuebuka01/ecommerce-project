@@ -57,9 +57,9 @@ Design goals for this project, in priority order:
                     │   Express App        │
                     │  ─────────────────   │
                     │  Middleware chain:    │
-                    │  helmet -> cors ->    │
-                    │  morgan -> json parser│
-                    │  -> rate limiter      │
+                    │                       │
+                    │                       │
+                    │                       │
                     └──────────┬───────────┘
                                │
                                ▼
@@ -93,7 +93,6 @@ Design goals for this project, in priority order:
                     └─────────────────────┘
 ```
 
-The request never skips a layer. Even an internal script calling the model directly still goes through Mongoose schema validation, which is the last line of defense if Joi is ever bypassed.
 
 ---
 
@@ -108,46 +107,31 @@ The request never skips a layer. Even an internal script calling the model direc
 | Config | dotenv | Keeps secrets out of source control |
 | Validation | Joi | Declarative request validation independent of the persistence layer |
 | Hosting | Render.com | Zero-config web service deploys from a GitHub branch |
-| Logging | morgan | Request logging in development and production |
-| Security headers | helmet | Sensible default HTTP headers |
-| Rate limiting | express-rate-limit | Basic abuse protection on public endpoints |
 
 ---
 
 ## Project Structure
 
 ```
-ecommerce-product-catalog-api/
-├── src/
-│   ├── config/
-│   │   └── db.js                # MongoDB connection logic
-│   ├── models/
-│   │   └── Product.js           # Mongoose schema
-│   ├── validators/
-│   │   └── productValidator.js  # Joi schemas for create/update
-│   ├── controllers/
-│   │   └── productController.js # Route handler logic
-│   ├── routes/
-│   │   └── productRoutes.js     # Express router for /api/products
-│   ├── middleware/
-│   │   ├── errorHandler.js      # Centralized error handling
-│   │   ├── notFound.js          # 404 handler
-│   │   └── rateLimiter.js       # Request throttling
-│   ├── utils/
-│   │   └── ApiError.js          # Custom error class
-│   └── app.js                   # Express app assembly (no listen())
-├── tests/
-│   ├── product.test.js          # Integration tests (Jest + Supertest)
-│   └── setup.js                 # Test DB lifecycle helpers
-├── .env.example
-├── .gitignore
+
 ├── package.json
-├── server.js                    # Entry point, calls app.listen()
-└── README.md
+├── package-lock.json
+├── server.js
+└── src
+    ├── controllers
+    │   └── products.controller.js
+    ├── databaseConfig
+    │   └── connectDb.js
+    ├── middlewares
+    │   ├── error.middleware.js
+    │   └── validation.middleware.js
+    ├── models
+    │   └── products.model.js
+    ├── routes
+    │   └── products.routes.js
+    └── validations
+        └── products.schema.js
 ```
-
-Splitting `app.js` from `server.js` is deliberate: it lets integration tests import the Express app and drive it with Supertest without binding a real port.
-
 ---
 
 ## Data Model
@@ -164,34 +148,30 @@ Splitting `app.js` from `server.js` is deliberate: it lets integration tests imp
 | `createdAt` | Date | auto | now | Set by Mongoose timestamps |
 | `updatedAt` | Date | auto | now | Set by Mongoose timestamps |
 
-### Mongoose Definition (`src/models/Product.js`)
+### Mongoose Definition (`src/models/products.model.js`)
 
 ```javascript
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 const productSchema = new mongoose.Schema(
   {
     name: {
       type: String,
-      required: [true, 'Product name is required'],
+      required: [true, "Product name is required"],
       trim: true,
-      minlength: 2,
-      maxlength: 120,
     },
     price: {
       type: Number,
-      required: [true, 'Price is required'],
-      min: [0, 'Price cannot be negative'],
+      required: [true, "Product price is required"],
+      min: [0, "Price must be a positive number"],
     },
     description: {
       type: String,
       trim: true,
-      maxlength: 2000,
-      default: '',
     },
     category: {
       type: String,
-      required: [true, 'Category is required'],
+      required: [true, "Category is required"],
       trim: true,
     },
     inStock: {
@@ -199,13 +179,13 @@ const productSchema = new mongoose.Schema(
       default: true,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
-// Text index enables the `search` / `name` query parameter
-productSchema.index({ name: 'text', description: 'text' });
+productSchema.index({ name: "text" });
 
-module.exports = mongoose.model('Product', productSchema);
+module.exports = mongoose.model("Product", productSchema);
+
 ```
 
 The text index is what makes `?search=` efficient rather than a full collection scan with a regex on every request.
@@ -225,8 +205,8 @@ The text index is what makes `?search=` efficient rather than a full collection 
 
 ```bash
 # Clone the repository
-git clone https://github.com/<your-org>/ecommerce-product-catalog-api.git
-cd ecommerce-product-catalog-api
+git clone https://github.com/JasonChukwuebuka01/ecommerce-project.git
+cd ecommerce-project
 
 # Install dependencies
 npm install
@@ -269,23 +249,17 @@ Create a `.env` file in the project root. Never commit this file; `.env.example`
 
 # Server
 PORT=5000
-NODE_ENV=development
 
 # Database
 MONGO_URI=mongodb+srv://<username>:<password>@<cluster-url>/ecommerce?retryWrites=true&w=majority
 
-# Rate limiting
-RATE_LIMIT_WINDOW_MS=900000
-RATE_LIMIT_MAX_REQUESTS=100
+
 ```
 
 | Variable | Required | Description |
 |---|---|---|
 | `PORT` | no | Port the Express server listens on. Defaults to `5000`. Render injects its own `PORT` at runtime, which the app must respect. |
-| `NODE_ENV` | no | `development`, `test`, or `production`. Controls logging verbosity and error detail in responses. |
 | `MONGO_URI` | yes | Full MongoDB Atlas connection string, including credentials and database name. |
-| `RATE_LIMIT_WINDOW_MS` | no | Sliding window size for the rate limiter, in milliseconds. |
-| `RATE_LIMIT_MAX_REQUESTS` | no | Max requests per IP per window. |
 
 ---
 
@@ -553,125 +527,98 @@ A second delete of the same ID returns `404 Not Found`, not a silent success. Id
 Every write endpoint runs its payload through a Joi schema before Mongoose is touched.
 
 ```javascript
-// src/validators/productValidator.js
-const Joi = require('joi');
+const Joi = require("joi");
 
+// Schema for POST /api/products (Create product)
 const createProductSchema = Joi.object({
-  name: Joi.string().trim().min(2).max(120).required(),
-  price: Joi.number().min(0).required(),
-  description: Joi.string().trim().max(2000).allow('', null),
-  category: Joi.string().trim().min(2).max(60).required(),
-  inStock: Joi.boolean(),
+  name: Joi.string().trim().min(2).max(60).required().messages({
+    "string.base": "Product name must be a string",
+    "string.empty": "Product name is required",
+    "string.min": "Product name must be at least 2 characters",
+    "string.max": "Product name cannot exceed 60 characters",
+    "any.required": "Product name is a required field",
+  }),
+
+  price: Joi.number().min(0).required().messages({
+    "number.base": "Price must be a valid number",
+    "number.min": "Price cannot be less than 0",
+    "any.required": "Price is a required field",
+  }),
+
+  description: Joi.string().trim().max(1000).allow("").optional().messages({
+    "string.base": "Description must be a string",
+    "string.max": "Description cannot exceed 1000 characters",
+  }),
+
+  category: Joi.string().trim().required().messages({
+    "string.base": "Category must be a string",
+    "string.empty": "Category is required",
+    "any.required": "Category is a required field",
+  }),
+
+  inStock: Joi.boolean().default(true).messages({
+    "boolean.base": "inStock must be a boolean value (true or false)",
+  }),
 });
 
-const updateProductSchema = createProductSchema.fork(
-  ['name', 'price', 'category'],
-  (schema) => schema.optional()
-);
 
-module.exports = { createProductSchema, updateProductSchema };
+
+
+
+
+const getProductsQuerySchema = Joi.object({
+  page: Joi.number().integer().min(1).default(1),
+  limit: Joi.number().integer().min(1).max(100).default(10),
+  sort: Joi.string().trim(),
+  name: Joi.string().trim(),
+  search: Joi.string().trim(),
+});
+
+
+
+const objectIdSchema = Joi.object({
+  id: Joi.string()
+    .hex()
+    .length(24)
+    .required()
+    .messages({
+      'string.hex': 'Product ID must be a valid 24-character hex string',
+      'string.length': 'Product ID must be exactly 24 characters long',
+    }),
+});
+
+
+
+
+module.exports = {
+  createProductSchema,
+  objectIdSchema,
+  getProductsQuerySchema
+
+};
+
 ```
 
 Errors are normalized through a single custom error class and a centralized error-handling middleware, so controllers never format an error response themselves:
 
-```javascript
-// src/utils/ApiError.js
-class ApiError extends Error {
-  constructor(statusCode, message, details = []) {
-    super(message);
-    this.statusCode = statusCode;
-    this.details = details;
-  }
-}
-module.exports = ApiError;
-```
+
 
 ```javascript
-// src/middleware/errorHandler.js
-const errorHandler = (err, req, res, next) => {
-  const statusCode = err.statusCode || 500;
-  const payload = {
-    success: false,
-    error: {
-      message: err.message || 'Internal server error',
-      ...(err.details?.length ? { details: err.details } : {}),
-    },
-  };
+const globalError = (err, req, res, next) => {
+    const statusCode = err.statusCode || 500;
+    const message = err.message || "Internal Server Error";
 
-  if (process.env.NODE_ENV !== 'production') {
-    console.error(err.stack);
-  }
-
-  res.status(statusCode).json(payload);
+    res.status(statusCode).json({
+        success: false,
+        statusCode,
+        message
+    });
 };
 
-module.exports = errorHandler;
+module.exports = globalError;
 ```
 
 This means a controller reads simply as: validate, attempt the operation, throw `ApiError` on failure, and let the middleware do the rest.
-
----
-
-## Security Notes
-
-These are the practices this project follows, in the interest of being an honest devsecops example rather than a toy:
-
-* **No secrets in source control.** `.env` is gitignored; `.env.example` documents required keys with placeholder values only.
-* **Least-privilege database user.** The Atlas user in `MONGO_URI` has read/write access scoped to the `ecommerce` database only, not cluster-admin.
-* **Input validation at the boundary.** Joi validates shape and type before anything reaches Mongoose; Mongoose validation is a second, independent layer, not a duplicate of the same check.
-* **NoSQL injection awareness.** Query parameters used in `find()` filters are whitelisted and type-coerced (e.g., `inStock` is coerced to a real boolean) rather than passed through as raw strings, which prevents operator injection like `{"$gt": ""}` in query strings.
-* **Rate limiting.** `express-rate-limit` throttles repeated requests per IP to reduce the impact of scraping or brute-force querying.
-* **Security headers.** `helmet` sets sane defaults (`X-Content-Type-Options`, `X-Frame-Options`, etc.) with no extra configuration required.
-* **CORS is explicit.** Allowed origins are configured, not left as a wildcard, once a frontend origin is known.
-* **Error responses do not leak internals.** Stack traces are logged server-side only; client-facing error messages are deliberately generic in `production`.
-* **Dependency hygiene.** `npm audit` is run in CI on every pull request; high and critical findings block the merge.
-
----
-
-## Testing
-
-Integration tests use Jest and Supertest against an in-memory or disposable test database, never the production Atlas cluster.
-
-```bash
-npm test
-```
-
-Example test:
-
-```javascript
-// tests/product.test.js
-const request = require('supertest');
-const app = require('../src/app');
-
-describe('POST /api/products', () => {
-  it('creates a product with valid data', async () => {
-    const res = await request(app)
-      .post('/api/products')
-      .send({
-        name: 'Test Product',
-        price: 19.99,
-        category: 'Test Category',
-      });
-
-    expect(res.statusCode).toBe(201);
-    expect(res.body.success).toBe(true);
-    expect(res.body.data.name).toBe('Test Product');
-  });
-
-  it('rejects a negative price', async () => {
-    const res = await request(app)
-      .post('/api/products')
-      .send({ name: 'Bad Product', price: -5, category: 'Test' });
-
-    expect(res.statusCode).toBe(400);
-    expect(res.body.success).toBe(false);
-  });
-});
-```
-
-Test coverage focuses on: validation edge cases (missing fields, negative price, oversized strings), pagination boundaries (page beyond total pages, limit above the server cap), search behavior (case-insensitivity, partial matches, no-results case), and the 400-vs-404 distinction on malformed versus missing IDs.
-
----
 
 ## Deployment
 
@@ -683,71 +630,14 @@ This project is deployed as a Render Web Service.
    * **Build Command:** `npm install`
    * **Start Command:** `npm start`
    * **Node Version:** matches the `engines` field in `package.json`
-4. Add environment variables in the Render dashboard under **Environment** (`MONGO_URI`, `NODE_ENV=production`, and any others from `.env.example`). Do not rely on a committed `.env` file; Render does not read it.
-5. In MongoDB Atlas, under **Network Access**, allow connections from anywhere (`0.0.0.0/0`) or from Render's published IP ranges, since Render's outbound IPs are not static on the free tier.
+4. Add environment variables in the Render dashboard under **Environment** (`MONGO_URI`, `PORT`).
+5. In MongoDB Atlas, under **Network Access**, allow connections from anywhere (`0.0.0.0/0`) or from Render's published IP ranges.
 6. Trigger a deploy. Render builds on every push to the connected branch by default.
 
-The app must read `process.env.PORT` rather than hardcoding a port, since Render assigns the port dynamically:
-
-```javascript
-// server.js
-const app = require('./src/app');
-const PORT = process.env.PORT || 5000;
-
-app.listen(PORT, () => {
-  console.log(`[server] API listening on port ${PORT}`);
-});
-```
+The app reads `process.env.PORT` rather than hardcoding a port:
 
 ---
 
-## CI/CD
-
-A minimal GitHub Actions workflow runs on every pull request to `main`:
-
-```yaml
-# .github/workflows/ci.yml
-name: CI
-
-on:
-  pull_request:
-    branches: [main]
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 18
-      - run: npm ci
-      - run: npm audit --audit-level=high
-      - run: npm test
-```
-
-A pull request cannot merge into `main` unless dependencies pass the audit threshold and the test suite is green. Render deploys automatically from `main` once a PR merges.
-
----
-
-## Postman / API Client
-
-A Postman collection is included at `docs/postman_collection.json`, covering every endpoint above with example requests, saved responses, and a pre-request script that reads the base URL from a Postman environment variable (`{{baseUrl}}`) so the same collection works locally and against the Render deployment without editing individual requests.
-
----
-
-## Roadmap
-
-Ideas considered in scope for a future iteration, intentionally left out of this version to keep the initial deliverable focused:
-
-* Authentication and role-based access (admin-only writes, public reads)
-* Image upload for product photos (e.g., via a storage bucket)
-* Soft deletes instead of hard deletes, with an `isDeleted` flag
-* Bulk import/export endpoints (CSV/JSON)
-* Category as a normalized reference collection instead of a free-text field
-* Structured logging and a request-id per call for traceability
-
----
 
 ## Contributing
 
