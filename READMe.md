@@ -18,15 +18,9 @@ API base path: `/api/products`
 7. [Environment Variables](#environment-variables)
 8. [API Reference](#api-reference)
 9. [Validation and Error Handling](#validation-and-error-handling)
-10. [Security Notes](#security-notes)
-11. [Testing](#testing)
-12. [Deployment](#deployment)
-13. [CI/CD](#cicd)
-14. [Postman / API Client](#postman--api-client)
-15. [Roadmap](#roadmap)
-16. [Contributing](#contributing)
-17. [Team](#team)
-18. [License](#license)
+10. [Deployment](#deployment)
+11. [Contributing](#contributing)
+12. [Team](#team)
 
 ---
 
