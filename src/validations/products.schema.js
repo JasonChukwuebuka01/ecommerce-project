@@ -39,9 +39,9 @@ const createProductSchema = Joi.object({
 
 const getProductsQuerySchema = Joi.object({
   page: Joi.number().integer().min(1).default(1),
-  limit: Joi.number().integer().min(1).max(100).default(10),
+  limit: Joi.number().integer().min(1).max(100).default(8),
   sort: Joi.string().trim(),
-  name: Joi.string().trim(),
+  category: Joi.string().trim(),
   search: Joi.string().trim(),
 });
 
