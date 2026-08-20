@@ -120,8 +120,31 @@ const updateProduct = async (req, res, next) => {
   }
 };
 
+const deleteProduct = async (req, res, next) =>{
+    
+    try {
+      
+        const productDeleted = await Product.findByIdAndDelete(req.params.id)
+
+        if(!productDeleted){
+            return res.status(404).json({
+                message: `Product with ID ${req.params.id} is not available`
+            });
+        }
+
+        res.status(200).json({
+            message: `Product have been removed from the list`
+        })
+
+        
+    } catch (error) {
+        next(error)
+        
+    }
+}
 
 
 
 
-module.exports = { getAllProducts, addProduct, getProductById, updateProduct};
+
+module.exports = { getAllProducts, addProduct, getProductById, updateProduct, deleteProduct};
