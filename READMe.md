@@ -236,13 +236,13 @@ On success you should see:
 
 ```
 [server] Connected to MongoDB Atlas
-[server] API listening on port 5000
+[server] API listening on port 3000
 ```
 
 Verify it is alive:
 
 ```bash
-curl http://localhost:5000/api/products
+curl http://localhost:3000/api/products
 ```
 
 ---
@@ -255,7 +255,7 @@ Create a `.env` file in the project root. Never commit this file; `.env.example`
 # .env.example
 
 # Server
-PORT=5000
+PORT=3000
 
 # Database
 MONGO_URI=mongodb+srv://<username>:<password>@<cluster-url>/ecommerce?retryWrites=true&w=majority
@@ -265,7 +265,7 @@ MONGO_URI=mongodb+srv://<username>:<password>@<cluster-url>/ecommerce?retryWrite
 
 | Variable | Required | Description |
 |---|---|---|
-| `PORT` | no | Port the Express server listens on. Defaults to `5000`. Render injects its own `PORT` at runtime, which the app must respect. |
+| `PORT` | no | Port the Express server listens on. Defaults to `3000`. Render injects its own `PORT` at runtime, which the app must respect. |
 | `MONGO_URI` | yes | Full MongoDB Atlas connection string, including credentials and database name. |
 
 ---
@@ -352,7 +352,7 @@ Validation failure — `400 Bad Request`:
 curl example:
 
 ```bash
-curl -X POST http://localhost:5000/api/products \
+curl -X POST http://localhost:3000/api/products \
   -H "Content-Type: application/json" \
   -d '{
         "name": "Wireless Mechanical Keyboard",
@@ -430,7 +430,7 @@ Search example:
 curl "https://ecommerce-project-v99g.onrender.com/api/products?search=iphone&sort=-price"
 ```
 
-This matches any product whose `name` or `description` contains "keyboard" (case-insensitive), sorted highest price first.
+This matches any product whose `name` or `description` contains "keyboard" (case-insensitive), sorted lowest price first.
 
 ---
 
