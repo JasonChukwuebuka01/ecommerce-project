@@ -9,18 +9,31 @@ API base path: `/api/products`
 
 ## Table of Contents
 
-1. [Overview](#overview)
-2. [Architecture](#architecture)
-3. [Tech Stack](#tech-stack)
-4. [Project Structure](#project-structure)
-5. [Data Model](#data-model)
-6. [Getting Started](#getting-started)
-7. [Environment Variables](#environment-variables)
-8. [API Reference](#api-reference)
-9. [Validation and Error Handling](#validation-and-error-handling)
-10. [Deployment](#deployment)
-11. [Contributing](#contributing)
-12. [Team](#team)
+- [E-commerce Product Catalog API](#e-commerce-product-catalog-api)
+  - [Table of Contents](#table-of-contents)
+  - [Overview](#overview)
+  - [Architecture](#architecture)
+  - [Tech Stack](#tech-stack)
+  - [Project Structure](#project-structure)
+  - [Data Model](#data-model)
+    - [Product Schema](#product-schema)
+    - [Mongoose Definition (`src/models/products.model.js`)](#mongoose-definition-srcmodelsproductsmodeljs)
+  - [Getting Started](#getting-started)
+    - [Prerequisites](#prerequisites)
+    - [Installation](#installation)
+    - [Running Locally](#running-locally)
+  - [Environment Variables](#environment-variables)
+  - [API Reference](#api-reference)
+    - [Response Envelope](#response-envelope)
+    - [Create a Product](#create-a-product)
+    - [List Products (Pagination, Sorting, Search)](#list-products-pagination-sorting-search)
+    - [Get a Single Product](#get-a-single-product)
+    - [Update a Product](#update-a-product)
+    - [Delete a Product](#delete-a-product)
+  - [Validation and Error Handling](#validation-and-error-handling)
+  - [Deployment](#deployment)
+  - [Contributing](#contributing)
+  - [Team](#team)
 
 ---
 
@@ -362,13 +375,13 @@ Query parameters:
 | `limit` | integer | `10` | `?limit=25` | Items per page, capped at 100 server-side |
 | `sort` | string | `-createdAt` | `?sort=price` | `price` ascending, `-price` descending, likewise for `name`, `createdAt` |
 | `search` / `name` | string | none | `?search=keyboard` | Case-insensitive text match on `name` and `description` |
-| `category` | string | none | `?category=Electronics` | Exact-match category filter |
+| `category` | string | none | `?category=Shoes` | Exact-match category filter |
 | `inStock` | boolean | none | `?inStock=true` | Filter by stock status |
 
-Example request — page 2, 5 per page, cheapest first, filtered by category:
+Example request — page 1, 5 per page, cheapest first, filtered by category:
 
 ```bash
-curl "http://localhost:5000/api/products?page=2&limit=5&sort=price&category=Electronics"
+curl "https://ecommerce-project-v99g.onrender.com/api/products?page=1&limit=5&category=Shoes&sort=-price"
 ```
 
 Response — `200 OK`:
@@ -376,60 +389,80 @@ Response — `200 OK`:
 ```json
 {
   "success": true,
+  "count": 2,
+  "totalProducts": 2,
+  "totalPages": 1,
+  "currentPage": 1,
   "data": [
     {
-      "_id": "665f1c2e4b1a2c0012ab34cd",
-      "name": "Wireless Mechanical Keyboard",
-      "price": 89.99,
-      "category": "Electronics",
+      "_id": "6a84340ce0d924e3c4632cdc",
+      "name": "Gucci Shoes",
+      "price": 3500,
+      "description": "A new pair of gucci shoes",
+      "category": "Shoes",
       "inStock": true,
-      "createdAt": "2026-08-19T09:12:44.101Z",
-      "updatedAt": "2026-08-19T09:12:44.101Z"
+      "createdAt": "2026-08-18T10:29:32.882Z",
+      "updatedAt": "2026-08-18T12:08:03.844Z",
+      "__v": 0
+    },
+    {
+      "_id": "6a84bcd064500c9febce9365",
+      "name": "prada Shoes",
+      "price": 500,
+      "description": "A new pair of prada shoes",
+      "category": "Shoes",
+      "inStock": true,
+      "createdAt": "2026-08-18T20:13:04.857Z",
+      "updatedAt": "2026-08-18T20:13:04.857Z",
+      "__v": 0
     }
-  ],
-  "meta": {
-    "page": 2,
-    "limit": 5,
-    "totalItems": 37,
-    "totalPages": 8,
-    "hasNextPage": true,
-    "hasPrevPage": true
-  }
+  ]
 }
 ```
+![API Pagination image sample](./assets/paginationImage.png)
+
+
+
 
 Search example:
 
 ```bash
-curl "http://localhost:5000/api/products?search=keyboard&sort=-price"
+curl "https://ecommerce-project-v99g.onrender.com/api/products?search=iphone&sort=-price"
 ```
 
 This matches any product whose `name` or `description` contains "keyboard" (case-insensitive), sorted highest price first.
 
 ---
 
+
+![API Search Image Sample](./assets/searchImage.png)
+
+
+
+
 ### Get a Single Product
 
 `GET /api/products/:id`
 
 ```bash
-curl http://localhost:5000/api/products/665f1c2e4b1a2c0012ab34cd
+curl https://ecommerce-project-v99g.onrender.com/api/products/6a84cf51a7ab05ad84bf1209
 ```
 
 Response — `200 OK`:
 
 ```json
 {
-  "success": true,
-  "data": {
-    "_id": "665f1c2e4b1a2c0012ab34cd",
-    "name": "Wireless Mechanical Keyboard",
-    "price": 89.99,
-    "description": "Hot-swappable switches, USB-C, 75% layout.",
-    "category": "Electronics",
+  "message": "Product found",
+  "product": {
+    "_id": "6a84cf51a7ab05ad84bf1209",
+    "name": "Iphone 17 pro max",
+    "price": 900,
+    "description": "A black color iphone 17 model",
+    "category": "gadget",
     "inStock": true,
-    "createdAt": "2026-08-19T09:12:44.101Z",
-    "updatedAt": "2026-08-19T09:12:44.101Z"
+    "createdAt": "2026-08-18T21:32:01.226Z",
+    "updatedAt": "2026-08-18T21:32:01.226Z",
+    "__v": 0
   }
 }
 ```
@@ -438,10 +471,7 @@ Not found — `404 Not Found`:
 
 ```json
 {
-  "success": false,
-  "error": {
-    "message": "Product not found"
-  }
+  "message": "No product found"
 }
 ```
 
@@ -450,9 +480,8 @@ Malformed ID — `400 Bad Request`:
 ```json
 {
   "success": false,
-  "error": {
-    "message": "Invalid product id"
-  }
+  "message": "Validation Error",
+  "error": "Product ID must be a valid 24-character hex string,Product ID must be exactly 24 characters long"
 }
 ```
 
@@ -467,25 +496,26 @@ This distinction matters: an invalid ObjectId is a client error (`400`), while a
 Partial updates are supported; only the fields present in the body are validated and applied.
 
 ```bash
-curl -X PUT http://localhost:5000/api/products/665f1c2e4b1a2c0012ab34cd \
+curl -X PUT https://ecommerce-project-v99g.onrender.com/api/products/6a85f51a2d4f666c9f40664a\
   -H "Content-Type: application/json" \
-  -d '{ "price": 79.99, "inStock": false }'
+  -d '{ "description": "A blue iphone 15 model",}'
 ```
 
 Response — `200 OK`:
 
 ```json
 {
-  "success": true,
-  "data": {
-    "_id": "665f1c2e4b1a2c0012ab34cd",
-    "name": "Wireless Mechanical Keyboard",
-    "price": 79.99,
-    "description": "Hot-swappable switches, USB-C, 75% layout.",
-    "category": "Electronics",
-    "inStock": false,
-    "createdAt": "2026-08-19T09:12:44.101Z",
-    "updatedAt": "2026-08-19T10:05:12.884Z"
+  "message": "Product updated successfully",
+  "product": {
+    "_id": "6a85f51a2d4f666c9f40664a",
+    "name": "Iphone 15 pro",
+    "price": 900,
+    "description": "A blue iphone 15 model",
+    "category": "gadget",
+    "inStock": true,
+    "createdAt": "2026-08-19T18:25:30.742Z",
+    "updatedAt": "2026-08-20T15:16:08.016Z",
+    "__v": 0
   }
 }
 ```
@@ -497,18 +527,14 @@ Response — `200 OK`:
 `DELETE /api/products/:id`
 
 ```bash
-curl -X DELETE http://localhost:5000/api/products/665f1c2e4b1a2c0012ab34cd
+curl -X DELETE https://ecommerce-project-v99g.onrender.com/api/products/6a85f51a2d4f666c9f40664a
 ```
 
 Response — `200 OK`:
 
 ```json
 {
-  "success": true,
-  "data": {
-    "message": "Product removed",
-    "id": "665f1c2e4b1a2c0012ab34cd"
-  }
+  "message": "Product have been removed from the list"
 }
 ```
 
@@ -638,21 +664,18 @@ The app reads `process.env.PORT` rather than hardcoding a port:
 
 1. Fork the repository and create a feature branch: `git checkout -b feature/short-description`.
 2. Keep commits scoped and use descriptive messages.
-3. Run `npm test` and `npm audit` locally before opening a pull request.
-4. Open a pull request against `main` and fill in the PR template, including what changed and how it was tested.
-5. At least one other team member reviews and approves before merge.
+3. Open a pull request against `main` and fill in the PR template, including what changed and how it was tested.
+4. At least one other team member reviews and approves before merge.
 
 ---
 
 ## Team
 
-| Name | Role | GitHub |
+| GitHub |
 |---|---|---|
-| _Add name_ | Backend / API | `@handle` |
-| _Add name_ | Database / Schema design | `@handle` |
-| _Add name_ | DevOps / Deployment | `@handle` |
-| _Add name_ | Testing / QA | `@handle` |
- _Add name_ | Documentation | `@handle` |
+|   `@JasonChukwuebuka01` |
+|  `@Emmacfemi` |
+|  `@ViCode-X` |
 
 ---
 
