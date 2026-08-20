@@ -25,7 +25,7 @@ productsRouter.get("/:id", validate(objectIdSchema, "params"), getProductById);
 
 productsRouter.put("/:id", validate(objectIdSchema, "params"), updateProduct);
 
-productsRouter.delete("/:id", validate(objectIdSchema), deleteProduct);
+productsRouter.delete("/:id", validate(objectIdSchema, "params"), deleteProduct);
 
 
 
